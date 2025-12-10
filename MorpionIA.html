@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morpion IA</title>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const XIcon = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        );
+
+        const CircleIcon = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" strokeWidth={2} />
+            </svg>
+        );
+
+        const RotateCcwIcon = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+        );
+
+        const ChevronLeftIcon = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+        );
+
+        function MorpionGame() {
+            const [board, setBoard] = useState(Array(9).fill(null));
+            const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+            const [gameOver, setGameOver] = useState(false);
+            const [winner, setWinner] = useState(null);
+            const [scores, setScores] = useState({ player: 0, ia: 0, draws: 0 });
+            const [difficulty, setDifficulty] = useState('moyen');
+            const [showMenu, setShowMenu] = useState(true);
+
+            const winningCombos = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+
+            const checkWinner = (currentBoard) => {
+                for (let combo of winningCombos) {
+                    const [a, b, c] = combo;
+                    if (currentBoard[a] && currentBoard[a] === currentBoard[b] && currentBoard[a] === currentBoard[c]) {
+                        return currentBoard[a];
+                    }
+                }
+                if (currentBoard.every(cell => cell !== null)) {
+                    return 'draw';
+                }
+                return null;
+            };
+
+            const makeIAMoveFacile = (currentBoard) => {
+                if (Math.random() < 0.7) {
+                    const available = currentBoard.map((cell, i) => cell === null ? i : null).filter(i => i !== null);
+                    return available[Math.floor(Math.random() * available.length)];
+                }
+                
+                for (let i = 0; i < 9; i++) {
+                    if (currentBoard[i] === null) {
+                        const testBoard = [...currentBoard];
+                        testBoard[i] = 'X';
+                        if (checkWinner(testBoard) === 'X') {
+                            return i;
+                        }
+                    }
+                }
+                
+                const available = currentBoard.map((cell, i) => cell === null ? i : null).filter(i => i !== null);
+                return available[Math.floor(Math.random() * available.length)];
+            };
+
+            const makeIAMoveMoyen = (currentBoard) => {
+                for (let i = 0; i < 9; i++) {
+                    if (currentBoard[i] === null) {
+                        const testBoard = [...currentBoard];
+                        testBoard[i] = 'O';
+                        if (checkWinner(testBoard) === 'O') {
+                            return i;
+                        }
+                    }
+                }
+
+                for (let i = 0; i < 9; i++) {
+                    if (currentBoard[i] === null) {
+                        const testBoard = [...currentBoard];
+                        testBoard[i] = 'X';
+                        if (checkWinner(testBoard) === 'X') {
+                            return i;
+                        }
+                    }
+                }
+
+                const available = currentBoard.map((cell, i) => cell === null ? i : null).filter(i => i !== null);
+                return available[Math.floor(Math.random() * available.length)];
+            };
+
+            const makeIAMoveDifficile = (currentBoard) => {
+                for (let i = 0; i < 9; i++) {
+                    if (currentBoard[i] === null) {
+                        const testBoard = [...currentBoard];
+                        testBoard[i] = 'O';
+                        if (checkWinner(testBoard) === 'O') {
+                            return i;
+                        }
+                    }
+                }
+
+                for (let i = 0; i < 9; i++) {
+                    if (currentBoard[i] === null) {
+                        const testBoard = [...currentBoard];
+                        testBoard[i] = 'X';
+                        if (checkWinner(testBoard) === 'X') {
+                            return i;
+                        }
+                    }
+                }
+
+                if (currentBoard[4] === null) {
+                    return 4;
+                }
+
+                const corners = [0, 2, 6, 8];
+                const availableCorners = corners.filter(i => currentBoard[i] === null);
+                if (availableCorners.length > 0) {
+                    return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+                }
+
+                const available = currentBoard.map((cell, i) => cell === null ? i : null).filter(i => i !== null);
+                return available[Math.floor(Math.random() * available.length)];
+            };
+
+            const makeIAMove = (currentBoard) => {
+                if (difficulty === 'facile') return makeIAMoveFacile(currentBoard);
+                if (difficulty === 'moyen') return makeIAMoveMoyen(currentBoard);
+                return makeIAMoveDifficile(currentBoard);
+            };
+
+            useEffect(() => {
+                if (!isPlayerTurn && !gameOver) {
+                    const timer = setTimeout(() => {
+                        const iaMove = makeIAMove(board);
+                        const newBoard = [...board];
+                        newBoard[iaMove] = 'O';
+                        setBoard(newBoard);
+                        
+                        const result = checkWinner(newBoard);
+                        if (result) {
+                            setGameOver(true);
+                            setWinner(result);
+                            if (result === 'O') {
+                                setScores(prev => ({ ...prev, ia: prev.ia + 1 }));
+                            } else if (result === 'draw') {
+                                setScores(prev => ({ ...prev, draws: prev.draws + 1 }));
+                            }
+                        } else {
+                            setIsPlayerTurn(true);
+                        }
+                    }, 500);
+                    
+                    return () => clearTimeout(timer);
+                }
+            }, [isPlayerTurn, gameOver, board]);
+
+            const handleClick = (index) => {
+                if (board[index] || gameOver || !isPlayerTurn) return;
+
+                const newBoard = [...board];
+                newBoard[index] = 'X';
+                setBoard(newBoard);
+
+                const result = checkWinner(newBoard);
+                if (result) {
+                    setGameOver(true);
+                    setWinner(result);
+                    if (result === 'X') {
+                        setScores(prev => ({ ...prev, player: prev.player + 1 }));
+                    } else if (result === 'draw') {
+                        setScores(prev => ({ ...prev, draws: prev.draws + 1 }));
+                    }
+                } else {
+                    setIsPlayerTurn(false);
+                }
+            };
+
+            const resetGame = () => {
+                setBoard(Array(9).fill(null));
+                setIsPlayerTurn(true);
+                setGameOver(false);
+                setWinner(null);
+            };
+
+            const startGame = (selectedDifficulty) => {
+                setDifficulty(selectedDifficulty);
+                setShowMenu(false);
+                resetGame();
+            };
+
+            const backToMenu = () => {
+                setShowMenu(true);
+                setBoard(Array(9).fill(null));
+                setIsPlayerTurn(true);
+                setGameOver(false);
+                setWinner(null);
+                setScores({ player: 0, ia: 0, draws: 0 });
+            };
+
+            if (showMenu) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                        <div className="max-w-md w-full">
+                            <div className="text-center mb-12">
+                                <h1 className="text-6xl font-light text-gray-900 mb-2">Morpion IA</h1>
+                                <p className="text-gray-500">Choisis ta difficulté</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => startGame('facile')}
+                                    className="w-full bg-white border-2 border-gray-200 hover:border-gray-900 py-6 px-8 text-left transition-all duration-200 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-xl font-medium text-gray-900 mb-1">Facile</h3>
+                                            <p className="text-sm text-gray-500">L'IA fait des erreurs</p>
+                                        </div>
+                                        <div className="text-3xl opacity-0 group-hover:opacity-100 transition-opacity">→</div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => startGame('moyen')}
+                                    className="w-full bg-white border-2 border-gray-200 hover:border-gray-900 py-6 px-8 text-left transition-all duration-200 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-xl font-medium text-gray-900 mb-1">Moyen</h3>
+                                            <p className="text-sm text-gray-500">Un défi équilibré</p>
+                                        </div>
+                                        <div className="text-3xl opacity-0 group-hover:opacity-100 transition-opacity">→</div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => startGame('difficile')}
+                                    className="w-full bg-white border-2 border-gray-200 hover:border-gray-900 py-6 px-8 text-left transition-all duration-200 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-xl font-medium text-gray-900 mb-1">Difficile</h3>
+                                            <p className="text-sm text-gray-500">Presque imbattable</p>
+                                        </div>
+                                        <div className="text-3xl opacity-0 group-hover:opacity-100 transition-opacity">→</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                    <div className="max-w-md w-full">
+                        <div className="flex items-center justify-between mb-8">
+                            <button
+                                onClick={backToMenu}
+                                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                <ChevronLeftIcon className="w-5 h-5" />
+                                <span className="text-sm">Menu</span>
+                            </button>
+                            <div className="text-sm text-gray-500 uppercase tracking-wider">
+                                {difficulty}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 mb-8">
+                            <div className="text-center">
+                                <div className="text-3xl font-light text-gray-900">{scores.player}</div>
+                                <div className="text-xs text-gray-500 mt-1">Toi</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-light text-gray-400">{scores.draws}</div>
+                                <div className="text-xs text-gray-500 mt-1">Nuls</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-light text-gray-900">{scores.ia}</div>
+                                <div className="text-xs text-gray-500 mt-1">IA</div>
+                            </div>
+                        </div>
+
+                        <div className="text-center mb-6 h-6">
+                            {!gameOver && (
+                                <p className="text-sm text-gray-600">
+                                    {isPlayerTurn ? "À toi de jouer" : "L'IA réfléchit..."}
+                                </p>
+                            )}
+                            {gameOver && winner === 'X' && (
+                                <p className="text-sm font-medium text-gray-900">Tu as gagné</p>
+                            )}
+                            {gameOver && winner === 'O' && (
+                                <p className="text-sm font-medium text-gray-900">L'IA a gagné</p>
+                            )}
+                            {gameOver && winner === 'draw' && (
+                                <p className="text-sm font-medium text-gray-900">Match nul</p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 mb-8">
+                            {board.map((cell, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => handleClick(index)}
+                                    className={`aspect-square bg-white border-2 flex items-center justify-center transition-all duration-200 ${
+                                        cell 
+                                            ? 'border-gray-200 cursor-not-allowed' 
+                                            : 'border-gray-200 hover:border-gray-900 cursor-pointer'
+                                    } ${!isPlayerTurn && !gameOver ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={!!cell || gameOver || !isPlayerTurn}
+                                >
+                                    {cell === 'X' && <XIcon className="w-12 h-12 text-gray-900" />}
+                                    {cell === 'O' && <CircleIcon className="w-12 h-12 text-gray-900" />}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={resetGame}
+                            className="w-full bg-gray-900 text-white py-4 hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <RotateCcwIcon className="w-4 h-4" />
+                            <span className="text-sm uppercase tracking-wider">Nouvelle partie</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<MorpionGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>
